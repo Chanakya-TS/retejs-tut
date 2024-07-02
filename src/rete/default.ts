@@ -14,18 +14,7 @@ import {
   AutoArrangePlugin,
   Presets as ArrangePresets,
 } from 'rete-auto-arrange-plugin';
-import { ReadonlyPlugin } from 'rete-readonly-plugin';
-import {
-  ContextMenuPlugin,
-  ContextMenuExtra,
-  Presets as ContextMenuPresets,
-} from 'rete-context-menu-plugin';
 import { MinimapExtra, MinimapPlugin } from 'rete-minimap-plugin';
-import {
-  ReroutePlugin,
-  RerouteExtra,
-  RerouteExtensions,
-} from 'rete-connection-reroute-plugin';
 
 type Node = NumberNode | AddNode;
 type Conn =
@@ -92,9 +81,7 @@ class AddNode extends Classic.Node implements DataflowNode {
 type AreaExtra =
   | Area2D<Schemes>
   | ReactArea2D<Schemes>
-  | ContextMenuExtra
   | MinimapExtra
-  | RerouteExtra;
 
 const socket = new Classic.Socket('socket');
 
@@ -104,42 +91,15 @@ export async function createEditor(container: HTMLElement) {
 
   const reactRender = new ReactPlugin<Schemes, AreaExtra>({ createRoot });
 
-  const readonly = new ReadonlyPlugin<Schemes>();
-  const contextMenu = new ContextMenuPlugin<Schemes>({
-    items: ContextMenuPresets.classic.setup([
-      ['Number', () => new NumberNode(1, process)],
-      ['Add', () => new AddNode()],
-    ]),
-  });
   const minimap = new MinimapPlugin<Schemes>();
-  const reroutePlugin = new ReroutePlugin<Schemes>();
 
-  editor.use(readonly.root);
   editor.use(area);
-  area.use(readonly.area);
   area.use(reactRender);
 
-  area.use(contextMenu);
   area.use(minimap);
-  reactRender.use(reroutePlugin);
 
   reactRender.addPreset(ReactPresets.classic.setup());
-  reactRender.addPreset(ReactPresets.contextMenu.setup());
   reactRender.addPreset(ReactPresets.minimap.setup());
-  reactRender.addPreset(
-    ReactPresets.reroute.setup({
-      contextMenu(id) {
-        reroutePlugin.remove(id);
-      },
-      translate(id, dx, dy) {
-        reroutePlugin.translate(id, dx, dy);
-      },
-      pointerdown(id) {
-        reroutePlugin.unselect(id);
-        reroutePlugin.select(id);
-      },
-    })
-  );
 
   const dataflow = new DataflowEngine<Schemes>();
 
@@ -172,7 +132,6 @@ export async function createEditor(container: HTMLElement) {
   const accumulating = AreaExtensions.accumulateOnCtrl();
 
   AreaExtensions.selectableNodes(area, selector, { accumulating });
-  RerouteExtensions.selectablePins(reroutePlugin, selector, accumulating);
 
   async function process() {
     dataflow.reset();
@@ -203,8 +162,6 @@ export async function createEditor(container: HTMLElement) {
   });
 
   process();
-
-  readonly.enable();
 
   return {
     destroy: () => area.destroy(),
